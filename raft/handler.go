@@ -650,7 +650,7 @@ func sleep(duration time.Duration) {
 }
 
 func logCheckpoint(checkpointName string, iface interface{}) {
-	log.Info("RAFT-CHECKPOINT\n", "name", checkpointName, iface)
+	log.Info("RAFT-CHECKPOINT", "name", checkpointName, "data", iface)
 }
 
 func blockExtendsChain(block *types.Block, chain *core.BlockChain) bool {

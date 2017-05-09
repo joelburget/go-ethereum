@@ -31,7 +31,6 @@ import (
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/contracts/release"
 	"github.com/ethereum/go-ethereum/eth"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p/discover"
 	"github.com/ethereum/go-ethereum/params"
@@ -140,7 +139,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 func makeFullNode(ctx *cli.Context) *node.Node {
 	stack, cfg := makeConfigNode(ctx)
 
-	ethereum := utils.RegisterEthService(stack, &cfg.Eth)
+	ethChan := utils.RegisterEthService(stack, &cfg.Eth)
 
 	if ctx.GlobalBool(utils.RaftModeFlag.Name) {
 		blockTimeMillis := ctx.GlobalInt(utils.RaftBlockTimeFlag.Name)
@@ -148,10 +147,8 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 		joinExistingId := ctx.GlobalInt(utils.RaftJoinExistingFlag.Name)
 
 		if err := stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			log.Warn("how to get priv key?", "p2p", cfg.Node.P2P)
-			log.Warn("how to get priv key?", "privkey", cfg.Node.P2P.PrivateKey)
-			pubkey := cfg.Node.P2P.PrivateKey.PublicKey
-			strId := discover.PubkeyID(&pubkey).String()
+			privkey := cfg.Node.NodeKey()
+			strId := discover.PubkeyID(&privkey.PublicKey).String()
 			blockTimeNanos := time.Duration(blockTimeMillis) * time.Millisecond
 			peers := cfg.Node.StaticNodes()
 
@@ -175,6 +172,8 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 					utils.Fatalf("failed to find local enode ID (%v) amongst peer IDs: %v", strId, peerIds)
 				}
 			}
+
+			ethereum := <-ethChan
 
 			return raft.New(ctx, params.TestChainConfig, myId, joinExisting, blockTimeNanos, ethereum, peers, datadir)
 		}); err != nil {

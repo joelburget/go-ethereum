@@ -234,7 +234,7 @@ func (minter *minter) createWork() *work {
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     parentNumber.Add(parentNumber, common.Big1),
-		Difficulty: ethash.CalcDifficulty(minter.config, uint64(tstamp), parent.Time().Uint64(), parent.Number(), parent.Difficulty()),
+		Difficulty: ethash.CalcDifficulty(minter.config, uint64(tstamp), parent.Header()),
 		GasLimit:   core.CalcGasLimit(parent),
 		GasUsed:    new(big.Int),
 		Coinbase:   minter.coinbase,
@@ -350,7 +350,7 @@ func (env *work) commitTransactions(txes *types.TransactionsByPriceAndNonce, bc 
 			break
 		}
 
-		env.state.StartRecord(tx.Hash(), common.Hash{}, 0)
+		env.state.Prepare(tx.Hash(), common.Hash{}, 0)
 
 		receipt, err := env.commitTransaction(tx, bc, gp)
 		switch {
