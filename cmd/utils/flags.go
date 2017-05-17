@@ -519,6 +519,10 @@ var (
 		Usage: "The raft ID to assume when joining an pre-existing cluster",
 		Value: 0,
 	}
+	EmitCheckpoints = cli.BoolFlag{
+		Name:  "emitcheckpoints",
+		Usage: "If enabled, emit specially formatted logging checkpoints",
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating

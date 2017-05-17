@@ -206,6 +206,8 @@ func (bv *BlockVoting) Start(client *rpc.Client, strat BlockMakerStrategy, ks *k
 
 	bv.run(strat)
 
+	logger.EmitCheckpoint(logger.BlockVotingStarted)
+
 	return nil
 }
 

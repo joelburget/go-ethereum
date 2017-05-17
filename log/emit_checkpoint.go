@@ -7,10 +7,10 @@ const (
 	BecameVerifier = "BECAME-VERIFIER"
 )
 
-var DoLogRaft = false
+var DoEmitCheckpoints = false
 
-func LogRaftCheckpoint(checkpointName string, logValues ...interface{}) {
-	if DoLogRaft {
+func EmitCheckpoint(checkpointName string, logValues ...interface{}) {
+	if DoEmitCheckpoints {
 		Info("QUORUM-CHECKPOINT\n", "name", checkpointName, "data", logValues)
 	}
 }
