@@ -181,7 +181,7 @@ func (ps *pendingState) applyTransactions(txs *TransactionsByPriorityAndNonce, m
 			// Everything ok, collect the logs and shift in the next transaction from the same account
 			coalescedLogs = append(coalescedLogs, logs...)
 			ps.tcount++
-			logger.EmitCheckpoint(logger.TxAccepted, tx.Hash().Hex())
+			log.EmitCheckpoint(log.TxAccepted, tx.Hash().Hex())
 			txs.Shift()
 		}
 	}

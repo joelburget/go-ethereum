@@ -121,6 +121,7 @@ var (
 		utils.RaftModeFlag,
 		utils.RaftBlockTimeFlag,
 		utils.RaftJoinExistingFlag,
+		utils.EmitCheckpointsFlag,
 	}
 
 	rpcFlags = []cli.Flag{

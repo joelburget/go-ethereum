@@ -519,7 +519,7 @@ var (
 		Usage: "The raft ID to assume when joining an pre-existing cluster",
 		Value: 0,
 	}
-	EmitCheckpoints = cli.BoolFlag{
+	EmitCheckpointsFlag = cli.BoolFlag{
 		Name:  "emitcheckpoints",
 		Usage: "If enabled, emit specially formatted logging checkpoints",
 	}
