@@ -13,6 +13,8 @@ const (
 
 	// TODO: it would be trivial to log the role in BlockVoting.run if we want
 	BlockVotingStarted = "BLOCK-VOTING-STARTED"
+
+	BlockCreated = "BLOCK-CREATED"
 )
 
 var DoEmitCheckpoints = false

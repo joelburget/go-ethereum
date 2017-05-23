@@ -28,6 +28,7 @@ import (
 	etcdRaft "github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
+	"github.com/ethereum/go-ethereum/logger"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -677,7 +678,7 @@ func (pm *ProtocolManager) applyNewChainHead(block *types.Block) {
 			panic(fmt.Sprintf("failed to extend chain: %s", err.Error()))
 		}
 
-		log.Info("Successfully extended chain", "hash", block.Hash())
+		log.EmitCheckpoint(log.BlockCreated, fmt.Sprintf("%x", block.Hash()))
 	}
 }
 
