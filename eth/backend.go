@@ -34,6 +34,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/core/quorum"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/eth/gasprice"
@@ -84,6 +85,11 @@ type Ethereum struct {
 	netRPCService *ethapi.PublicNetAPI
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
+
+	blockVoting      *quorum.BlockVoting
+	voteMinBlockTime uint
+	voteMaxBlockTime uint
+	blockMakerStrat  quorum.BlockMakerStrategy
 }
 
 func (s *Ethereum) AddLesServer(ls LesServer) {
@@ -177,6 +183,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		gpoParams.Default = config.GasPrice
 	}
 	eth.ApiBackend.gpo = gasprice.NewOracle(eth.ApiBackend, gpoParams)
+
+	eth.blockVoting = quorum.NewBlockVoting(eth.blockchain, eth.chainConfig, eth.txPool, eth.eventMux, eth.chainDb, eth.accountManager, config.SingleBlockMaker)
 
 	return eth, nil
 }
@@ -285,6 +293,11 @@ func (s *Ethereum) APIs() []rpc.API {
 			Version:   "1.0",
 			Service:   s.netRPCService,
 			Public:    true,
+		},
+		{
+			Namespace: "quorum",
+			Version:   "1.0",
+			Service:   quorum.NewPublicQuorumAPI(s.blockVoting),
 		},
 	}...)
 }

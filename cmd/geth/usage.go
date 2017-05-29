@@ -120,6 +120,19 @@ var AppHelpFlagGroups = []flagGroup{
 		},
 	},
 	{
+		Name: "QUORUM",
+		Flags: []cli.Flag{
+			utils.VoteAccountFlag,
+			utils.VoteAccountPasswordFlag,
+			utils.VoteBlockMakerAccountFlag,
+			utils.VoteBlockMakerAccountPasswordFlag,
+			utils.SingleBlockMakerFlag,
+			utils.VoteMinBlockTimeFlag,
+			utils.VoteMaxBlockTimeFlag,
+		},
+	},
+
+	{
 		Name: "ACCOUNT",
 		Flags: []cli.Flag{
 			utils.UnlockedAccountFlag,

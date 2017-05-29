@@ -386,6 +386,17 @@ func (b *Block) Hash() common.Hash {
 	return v
 }
 
+// QuorumHash returns a RLP hash of header fields relevant to determine if
+// a block was created/signed by an authorized block maker.
+func (h *Header) QuorumHash() common.Hash {
+	return rlpHash([]interface{}{
+		h.ParentHash,
+		h.Coinbase,
+		h.Root,
+		h.Number,
+	})
+}
+
 func (b *Block) String() string {
 	str := fmt.Sprintf(`Block(#%v): Size: %v {
 MinerHash: %x
