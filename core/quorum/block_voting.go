@@ -1,6 +1,7 @@
 package quorum
 
 import (
+	"errors"
 	"math/big"
 	"sync"
 
@@ -12,7 +13,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -23,8 +26,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 )
 
 const (
@@ -53,10 +54,10 @@ type BlockVoting struct {
 	voteSession  *VotingContractSession
 	callContract *VotingContractCaller
 
-	ks *keystore.KeyStore
-	voteAcct accounts.Account
+	ks        *keystore.KeyStore
+	voteAcct  accounts.Account
 	makerAcct accounts.Account
-	coinbase common.Address
+	coinbase  common.Address
 
 	pStateMu sync.Mutex
 	pState   *pendingState
@@ -104,11 +105,11 @@ func (bv *BlockVoting) resetPendingState(parent *types.Block) {
 	}
 
 	ps := &pendingState{
-		parent:        parent,
-		publicState:   publicState,
+		parent:      parent,
+		publicState: publicState,
 		//privateState:  privateState,
-		header:        bv.makeHeader(parent),
-		gp:            new(core.GasPool),
+		header: bv.makeHeader(parent),
+		gp:     new(core.GasPool),
 		//ownedAccounts: accountAddressesSet(bv.am.Accounts()),
 	}
 
@@ -146,12 +147,11 @@ func (bv *BlockVoting) makeHeader(parent *types.Block) *types.Header {
 	header := &types.Header{
 		Number:     num.Add(num, common.Big1),
 		ParentHash: parent.Hash(),
-		Difficulty: ethash.CalcDifficulty(bv.cc, uint64(tstamp), parent.Time().Uint64(), parent.Number(), parent.Difficulty()),
+		Difficulty: ethash.CalcDifficulty(bv.cc, uint64(tstamp), parent.Header()),
 		GasLimit:   core.CalcGasLimit(parent),
 		GasUsed:    new(big.Int),
 		Time:       big.NewInt(tstamp),
 	}
-
 
 	header.Coinbase = bv.makerAcct.Address
 
@@ -177,7 +177,21 @@ func (bv *BlockVoting) Start(client *rpc.Client, strat BlockMakerStrategy, ks *k
 			return err
 		}
 
-		auth := bind.NewKeyedTransactor(voteAcct)
+		//auth := bind.NewKeyedTransactor(voteAcct)
+		addr := voteAcct.Address
+		auth := bind.TransactOpts{
+			From: addr,
+			Signer: func(signer types.Signer, address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+				if address != addr {
+					return nil, errors.New("not authorized to sign this account")
+				}
+				signature, err := bv.ks.SignHash(voteAcct, signer.Hash(tx).Bytes())
+				if err != nil {
+					return nil, err
+				}
+				return tx.WithSignature(signer, signature)
+			},
+		}
 		bv.voteSession = &VotingContractSession{
 			Contract: contract,
 			CallOpts: bind.CallOpts{

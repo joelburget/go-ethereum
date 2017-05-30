@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 var (
@@ -52,8 +52,8 @@ func (api *PublicQuorumAPI) Vote(blockHash common.Hash) (common.Hash, error) {
 func (api *PublicQuorumAPI) NodeInfo() map[string]interface{} {
 	result := make(map[string]interface{})
 
-	if api.bv.bmk != nil {
-		addr := crypto.PubkeyToAddress(api.bv.bmk.PublicKey)
+	if api.bv.makerAcct != (accounts.Account{}) {
+		addr := api.bv.makerAcct.Address
 		allowed, _ := api.bv.callContract.IsBlockMaker(nil, addr)
 		result["blockMakerAccount"] = addr
 		result["canCreateBlocks"] = allowed
@@ -62,8 +62,8 @@ func (api *PublicQuorumAPI) NodeInfo() map[string]interface{} {
 		}
 	}
 
-	if api.bv.vk != nil {
-		addr := crypto.PubkeyToAddress(api.bv.vk.PublicKey)
+	if api.bv.voteAcct != (accounts.Account{}) {
+		addr := api.bv.voteAcct.Address
 		allowed, _ := api.bv.callContract.IsVoter(nil, addr)
 		result["voteAccount"] = addr
 		result["canVote"] = allowed

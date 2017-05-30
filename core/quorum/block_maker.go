@@ -3,16 +3,16 @@ package quorum
 import (
 	"time"
 
+	"container/heap"
+	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/log"
-	"container/heap"
-	"fmt"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 // vvv
@@ -108,10 +108,10 @@ type pendingState struct {
 	tcount                    int // tx count in cycle
 	gp                        *core.GasPool
 	//ownedAccounts             *set.Set
-	txs                       types.Transactions // set of transactions
-	lowGasTxs                 types.Transactions
-	failedTxs                 types.Transactions
-	parent                    *types.Block
+	txs       types.Transactions // set of transactions
+	lowGasTxs types.Transactions
+	failedTxs types.Transactions
+	parent    *types.Block
 
 	header   *types.Header
 	receipts types.Receipts
@@ -164,7 +164,7 @@ func (ps *pendingState) applyTransactions(txs *TransactionsByPriorityAndNonce, m
 		}
 
 		// Start executing the transaction
-		ps.publicState.StartRecord(tx.Hash(), common.Hash{}, 0)
+		ps.publicState.Prepare(tx.Hash(), common.Hash{}, 0)
 
 		err, logs := ps.applyTransaction(tx, bc, cc)
 		switch {
