@@ -139,6 +139,9 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 func makeFullNode(ctx *cli.Context) *node.Node {
 	stack, cfg := makeConfigNode(ctx)
 
+	cfg.Eth.VoteMinBlockTime = uint(ctx.GlobalInt(utils.VoteMinBlockTimeFlag.Name))
+	cfg.Eth.VoteMaxBlockTime = uint(ctx.GlobalInt(utils.VoteMaxBlockTimeFlag.Name))
+
 	ethChan := utils.RegisterEthService(stack, &cfg.Eth)
 
 	if ctx.GlobalBool(utils.RaftModeFlag.Name) {

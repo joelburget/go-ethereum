@@ -129,6 +129,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		networkId:      config.NetworkId,
 		gasPrice:       config.GasPrice,
 		etherbase:      config.Etherbase,
+		voteMinBlockTime: config.VoteMinBlockTime,
+		voteMaxBlockTime: config.VoteMaxBlockTime,
 	}
 
 	if err := addMipmapBloomBins(chainDb); err != nil {
