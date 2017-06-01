@@ -287,6 +287,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 
 		var voteAcct accounts.Account
 		var makerAcct accounts.Account
+	log.DoEmitCheckpoints = ctx.GlobalBool(utils.EmitCheckpointsFlag.Name)
 
 		if voteAddr := ctx.GlobalString(utils.VoteAccountFlag.Name); voteAddr != "" {
 			voteAddr = strings.TrimSpace(voteAddr)
