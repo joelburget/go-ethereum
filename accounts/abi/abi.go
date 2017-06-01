@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // The ABI holds information about a contract's context and available
@@ -283,6 +284,7 @@ var (
 // Unpack output in v according to the abi specification
 func (abi ABI) Unpack(v interface{}, name string, output []byte) error {
 	var method = abi.Methods[name]
+	log.Info("unpack", "method", method, "name", name, "outputs", method.Outputs)
 
 	if len(output) == 0 {
 		return fmt.Errorf("abi: unmarshalling empty output")

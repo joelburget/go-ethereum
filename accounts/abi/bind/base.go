@@ -27,6 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // SignerFn is a signer function callback when a contract requires a method to
@@ -120,6 +121,7 @@ func (c *BoundContract) Call(opts *CallOpts, result interface{}, method string, 
 			return ErrNoPendingState
 		}
 		output, err = pb.PendingCallContract(ctx, msg)
+		log.Info("Call (pending)", "input", fmt.Sprintf("%x", input), "output", fmt.Sprintf("%x", output), "err", err, "address", c.address)
 		if err == nil && len(output) == 0 {
 			// Make sure we have a contract to operate on, and bail out otherwise.
 			if code, err = pb.PendingCodeAt(ctx, c.address); err != nil {
@@ -130,6 +132,7 @@ func (c *BoundContract) Call(opts *CallOpts, result interface{}, method string, 
 		}
 	} else {
 		output, err = c.caller.CallContract(ctx, msg, nil)
+		log.Info("Call (contract)", "input", fmt.Sprintf("%x", input), "output", fmt.Sprintf("%x", output), "err", err, "address", c.address)
 		if err == nil && len(output) == 0 {
 			// Make sure we have a contract to operate on, and bail out otherwise.
 			if code, err = c.caller.CodeAt(ctx, c.address, nil); err != nil {

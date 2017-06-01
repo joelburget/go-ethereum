@@ -148,6 +148,7 @@ func (in *Interpreter) Run(snapshot int, contract *Contract, input []byte) (ret 
 		if err := in.enforceRestrictions(op, operation, stack); err != nil {
 			return nil, err
 		}
+		log.Debug("loaded op", "op", op, "operation", operation)
 
 		// if the op is invalid abort the process and return an error
 		if !operation.valid {
