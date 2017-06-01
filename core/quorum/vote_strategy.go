@@ -76,7 +76,7 @@ func resetBlockMakerTimer(t *time.Timer, min, max int) {
 
 // Start generating block create request events.
 func (s *randomDeadlineStrategy) Start() error {
-	log.Info("Random deadline strategy configured with min=%d, max=%d", s.min, s.max)
+	log.Info("Random deadline strategy configured with", "min", s.min, "max", s.max)
 	s.deadlineTimer = time.NewTimer(time.Duration(s.min+rand.Intn(s.max-s.min)) * time.Second)
 	go func() {
 		sub := s.mux.Subscribe(core.ChainHeadEvent{})

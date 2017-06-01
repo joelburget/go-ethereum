@@ -170,11 +170,11 @@ func (ps *pendingState) applyTransactions(txs *TransactionsByPriorityAndNonce, m
 		switch {
 		case err == vm.ErrOutOfGas:
 			// Pop the current out-of-gas transaction without shifting in the next from the account
-			log.Info("Gas limit reached for (%x) in this block. Continue to try smaller txs\n", from[:4])
+			log.Info("Gas limit reached in this block. Continue to try smaller txs\n", "sender", from[:4])
 			txs.Pop()
 		case err != nil:
 			// Pop the current failed transaction without shifting in the next from the account
-			log.Info("Transaction (%x) failed, will be removed: %v\n", tx.Hash().Bytes()[:4], err)
+			log.Info("Transaction failed, will be removed\n", "tx", tx.Hash().Bytes()[:4], "err", err)
 			failedTxs = append(failedTxs, tx)
 			txs.Pop()
 		default:
