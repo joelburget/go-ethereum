@@ -243,7 +243,6 @@ func (st *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *big
 		ret, st.gas, vmerr = evm.Call(sender, st.to().Address(), st.data, st.gas, st.value)
 	}
 	if vmerr != nil {
-		log.Debug("VM returned with error", "err", err)
 		// The only possible consensus-error would be if there wasn't
 		// sufficient balance to make the transfer happen. The first
 		// balance transfer may never fail.
@@ -256,7 +255,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *big
 	st.refundGas()
 	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(st.gasUsed(), st.gasPrice))
 
-	return ret, requiredGas, st.gasUsed(), err
+	return ret, requiredGas, st.gasUsed(), vmerr
 }
 
 func (st *StateTransition) refundGas() {
