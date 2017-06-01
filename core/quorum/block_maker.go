@@ -123,12 +123,12 @@ type pendingState struct {
 func (ps *pendingState) applyTransaction(tx *types.Transaction, bc *core.BlockChain, cc *params.ChainConfig) (error, []*types.Log) {
 	publicSnaphot, privateSnapshot := ps.publicState.Snapshot(), ps.privateState.Snapshot()
 
-	// this is a bit of a hack to force jit for the miners
+	//// this is a bit of a hack to force jit for the miners
 	config := vm.Config{} // XXX
-	if !(config.EnableJit && config.ForceJit) {
-		config.EnableJit = false
-	}
-	config.ForceJit = false // disable forcing jit
+	//if !(config.EnableJit && config.ForceJit) {
+	//	config.EnableJit = false
+	//}
+	//config.ForceJit = false // disable forcing jit
 
 	var author *common.Address
 	publicReceipt, _, err := core.ApplyTransaction(cc, bc, author, ps.gp, ps.publicState, ps.header, tx, ps.header.GasUsed, config)
