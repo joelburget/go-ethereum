@@ -62,7 +62,7 @@ func genesisBlock(voteThreshold int) string {
 		addrVoteKey2.Hex(),
 		addrBlockMaker1.Hex(),
 		params.QuorumVotingContractAddr.Hex(),
-		quorum.RuntimeCode,
+		quorum.BlockVotingABI,
 		voteThreshold,
 	)
 }
@@ -72,7 +72,7 @@ func TestBlockVotingBlockMaker(t *testing.T) {
 	//	db, _       = ethdb.NewMemDatabase()
 	//	mux         event.TypeMux
 	//	chainConfig = core.MakeChainConfig()
-	//	bv          *quorum.BlockVoting
+	//	bv          *quorum.QuorumBlockVoting
 	//
 	//	err error
 	//)
@@ -89,8 +89,8 @@ func TestBlockVotingBlockMaker(t *testing.T) {
 	//	return state, nil
 	//}, func() *big.Int { return big.NewInt(1000000) })
 	//
-	//// func NewBlockVoting(client *rpc.Client, bc *core.BlockChain, chainConfig *params.ChainConfig, txpool *core.TxPool, mux *event.TypeMux, db ethdb.Database, blockMakerKey, voteKey *ecdsa.PrivateKey, isSynchronised bool) *BlockVoting {
-	//bv, err = quorum.NewBlockVoting(nil, blockchain, chainConfig, txpool, &mux, db, blockMakerKey1, voteKey1, true)
+	//// func NewQuorumBlockVoting(client *rpc.Client, bc *core.BlockChain, chainConfig *params.ChainConfig, txpool *core.TxPool, mux *event.TypeMux, db ethdb.Database, blockMakerKey, voteKey *ecdsa.PrivateKey, isSynchronised bool) *QuorumBlockVoting {
+	//bv, err = quorum.NewQuorumBlockVoting(nil, blockchain, chainConfig, txpool, &mux, db, blockMakerKey1, voteKey1, true)
 	//if err != nil {
 	//	t.Fatal(err)
 	//}

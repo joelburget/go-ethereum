@@ -13,10 +13,10 @@ var (
 )
 
 type PublicQuorumAPI struct {
-	bv *BlockVoting
+	bv *QuorumBlockVoting
 }
 
-func NewPublicQuorumAPI(bv *BlockVoting) *PublicQuorumAPI {
+func NewPublicQuorumAPI(bv *QuorumBlockVoting) *PublicQuorumAPI {
 	return &PublicQuorumAPI{bv}
 }
 
