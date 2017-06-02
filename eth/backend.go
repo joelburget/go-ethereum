@@ -119,16 +119,16 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	log.Info("Initialised chain configuration", "config", chainConfig)
 
 	eth := &Ethereum{
-		chainDb:        chainDb,
-		chainConfig:    chainConfig,
-		eventMux:       ctx.EventMux,
-		accountManager: ctx.AccountManager,
-		engine:         CreateConsensusEngine(ctx, config, chainConfig, chainDb),
-		shutdownChan:   make(chan bool),
-		stopDbUpgrade:  stopDbUpgrade,
-		networkId:      config.NetworkId,
-		gasPrice:       config.GasPrice,
-		etherbase:      config.Etherbase,
+		chainDb:          chainDb,
+		chainConfig:      chainConfig,
+		eventMux:         ctx.EventMux,
+		accountManager:   ctx.AccountManager,
+		engine:           CreateConsensusEngine(ctx, config, chainConfig, chainDb),
+		shutdownChan:     make(chan bool),
+		stopDbUpgrade:    stopDbUpgrade,
+		networkId:        config.NetworkId,
+		gasPrice:         config.GasPrice,
+		etherbase:        config.Etherbase,
 		voteMinBlockTime: config.VoteMinBlockTime,
 		voteMaxBlockTime: config.VoteMaxBlockTime,
 	}
