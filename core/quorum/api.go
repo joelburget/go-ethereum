@@ -26,7 +26,7 @@ func NewPublicQuorumAPI(bv *QuorumBlockVoting) *PublicQuorumAPI {
 //}
 
 func (api *PublicQuorumAPI) Vote(blockHash common.Hash) (common.Hash, error) {
-	pBlock, _, _ := api.bv.Pending()
+	pBlock, _ := api.bv.Pending()
 
 	req := Vote{
 		Hash:   blockHash,

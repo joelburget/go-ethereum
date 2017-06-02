@@ -306,10 +306,10 @@ func (bv *QuorumBlockVoting) applyTransaction(tx *types.Transaction) {
 	bv.pStateMu.Unlock()
 }
 
-func (bv *QuorumBlockVoting) Pending() (*types.Block, *state.StateDB, *state.StateDB) {
+func (bv *QuorumBlockVoting) Pending() (*types.Block /**state.StateDB,*/, *state.StateDB) {
 	bv.pStateMu.Lock()
 	defer bv.pStateMu.Unlock()
-	return types.NewBlock(bv.pState.header, bv.pState.txs, nil, bv.pState.receipts), bv.pState.publicState.Copy(), bv.pState.privateState.Copy()
+	return types.NewBlock(bv.pState.header, bv.pState.txs, nil, bv.pState.receipts), bv.pState.publicState.Copy() // , bv.pState.privateState.Copy()
 }
 
 func (bv *QuorumBlockVoting) createBlock() (*types.Block, error) {
