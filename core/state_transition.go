@@ -241,7 +241,6 @@ func (st *StateTransition) TransitionDb() (ret []byte, requiredGas, usedGas *big
 		// Increment the nonce for the next transaction
 		st.state.SetNonce(sender.Address(), st.state.GetNonce(sender.Address())+1)
 		ret, st.gas, vmerr = evm.Call(sender, st.to().Address(), st.data, st.gas, st.value)
-		log.Info("evm.Call", "input", fmt.Sprintf("%x", st.data), "ret", fmt.Sprintf("%x", ret), "st.gas", st.gas, "vmerr", vmerr)
 	}
 	if vmerr != nil {
 		log.Debug("VM returned with error", "err", vmerr)

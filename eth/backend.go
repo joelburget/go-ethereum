@@ -106,7 +106,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if !config.SyncMode.IsValid() {
 		return nil, fmt.Errorf("invalid sync mode %d", config.SyncMode)
 	}
-	log.Info("genesis", "genesis", config.Genesis)
 
 	chainDb, err := CreateDB(ctx, config, "chaindata")
 	if err != nil {
@@ -114,7 +113,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	}
 	stopDbUpgrade := upgradeSequentialKeys(chainDb)
 	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlock(chainDb, config.Genesis)
-	log.Info("genesis set up", "genesisHash", genesisHash.Hex(), "genesisErr", genesisErr)
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
 	}
