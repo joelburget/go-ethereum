@@ -100,7 +100,6 @@ contract BlockVoting {
     // getCanonHash(126) will return the hash of block 125
     // (if there are enough votes for it).
 	function getCanonHash(uint height) constant returns(bytes32) {
-	    return "joel";
 		Period period = periods[height-1];
 
 		bytes32 best;
