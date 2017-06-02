@@ -28,7 +28,6 @@ import (
 	etcdRaft "github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/rafthttp"
-	"github.com/ethereum/go-ethereum/logger"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
