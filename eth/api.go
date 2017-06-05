@@ -328,7 +328,7 @@ func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber) (state.Dump, error
 	if block == nil {
 		return state.Dump{}, fmt.Errorf("block #%d not found", blockNr)
 	}
-	stateDb, err := api.eth.BlockChain().StateAt(block.Root())
+	stateDb, _, err := api.eth.BlockChain().StateAt(block.Root())
 	if err != nil {
 		return state.Dump{}, err
 	}
@@ -450,7 +450,7 @@ func (api *PrivateDebugAPI) traceBlock(block *types.Block, logConfig *vm.LogConf
 	if err := api.eth.engine.VerifyHeader(blockchain, block.Header(), true); err != nil {
 		return false, structLogger.StructLogs(), err
 	}
-	statedb, err := blockchain.StateAt(blockchain.GetBlock(block.ParentHash(), block.NumberU64()-1).Root())
+	statedb, _, err := blockchain.StateAt(blockchain.GetBlock(block.ParentHash(), block.NumberU64()-1).Root())
 	if err != nil {
 		return false, structLogger.StructLogs(), err
 	}
@@ -572,7 +572,7 @@ func (api *PrivateDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (co
 	if parent == nil {
 		return nil, vm.Context{}, nil, fmt.Errorf("block parent %x not found", block.ParentHash())
 	}
-	statedb, err := api.eth.BlockChain().StateAt(parent.Root())
+	statedb, _, err := api.eth.BlockChain().StateAt(parent.Root())
 	if err != nil {
 		return nil, vm.Context{}, nil, err
 	}

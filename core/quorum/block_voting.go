@@ -91,17 +91,17 @@ func NewQuorumBlockVoting(bc *core.BlockChain, chainConfig *params.ChainConfig, 
 }
 
 func (bv *QuorumBlockVoting) resetPendingState(parent *types.Block) {
-	publicState, err := bv.bc.State()
+	publicState, privateState, err := bv.bc.StateAt(parent.Root())
 	if err != nil {
 		panic(fmt.Sprintf("State error", "err", err))
 	}
 
 	ps := &pendingState{
-		parent:      parent,
-		publicState: publicState,
-		//privateState:  privateState,
-		header: bv.makeHeader(parent),
-		gp:     new(core.GasPool),
+		parent:       parent,
+		publicState:  publicState,
+		privateState: privateState,
+		header:       bv.makeHeader(parent),
+		gp:           new(core.GasPool),
 		//ownedAccounts: accountAddressesSet(bv.am.Accounts()),
 	}
 
@@ -306,10 +306,10 @@ func (bv *QuorumBlockVoting) applyTransaction(tx *types.Transaction) {
 	bv.pStateMu.Unlock()
 }
 
-func (bv *QuorumBlockVoting) Pending() (*types.Block /**state.StateDB,*/, *state.StateDB) {
+func (bv *QuorumBlockVoting) Pending() (*types.Block, *state.StateDB, *state.StateDB) {
 	bv.pStateMu.Lock()
 	defer bv.pStateMu.Unlock()
-	return types.NewBlock(bv.pState.header, bv.pState.txs, nil, bv.pState.receipts), bv.pState.publicState.Copy() // , bv.pState.privateState.Copy()
+	return types.NewBlock(bv.pState.header, bv.pState.txs, nil, bv.pState.receipts), bv.pState.publicState.Copy(), bv.pState.privateState.Copy()
 }
 
 func (bv *QuorumBlockVoting) createBlock() (*types.Block, error) {

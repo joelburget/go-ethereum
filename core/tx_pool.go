@@ -70,7 +70,7 @@ var (
 	underpricedTxCounter = metrics.NewCounter("txpool/underpriced")
 )
 
-type stateFn func() (*state.StateDB, error)
+type stateFn func() (*state.StateDB, *state.StateDB, error)
 
 // TxPoolConfig are the configuration parameters of the transaction pool.
 type TxPoolConfig struct {
@@ -231,7 +231,7 @@ func (pool *TxPool) eventLoop() {
 }
 
 func (pool *TxPool) resetState() {
-	currentState, err := pool.currentState()
+	currentState, _, err := pool.currentState()
 	if err != nil {
 		log.Error("Failed reset txpool state", "err", err)
 		return
@@ -363,7 +363,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction) error {
 		return ErrUnderpriced
 	}
 
-	currentState, err := pool.currentState()
+	currentState, _, err := pool.currentState()
 	if err != nil {
 		return err
 	}
@@ -544,7 +544,7 @@ func (pool *TxPool) Add(tx *types.Transaction) error {
 	}
 	// If we added a new transaction, run promotion checks and return
 	if !replace {
-		state, err := pool.currentState()
+		state, _, err := pool.currentState()
 		if err != nil {
 			return err
 		}
@@ -571,7 +571,7 @@ func (pool *TxPool) AddBatch(txs []*types.Transaction) error {
 	}
 	// Only reprocess the internal state if something was actually added
 	if len(dirty) > 0 {
-		state, err := pool.currentState()
+		state, _, err := pool.currentState()
 		if err != nil {
 			return err
 		}

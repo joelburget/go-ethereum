@@ -92,7 +92,7 @@ func (b *EthApiBackend) StateAndHeaderByNumber(ctx context.Context, blockNr rpc.
 	if header == nil || err != nil {
 		return nil, nil, err
 	}
-	stateDb, err := b.eth.BlockChain().StateAt(header.Root)
+	stateDb, _, err := b.eth.BlockChain().StateAt(header.Root)
 	return EthApiState{stateDb}, header, err
 }
 

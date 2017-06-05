@@ -104,9 +104,9 @@ type BlockMaker interface {
 }
 
 type pendingState struct {
-	publicState/*, privateState */ *state.StateDB
-	tcount int // tx count in cycle
-	gp     *core.GasPool
+	publicState, privateState *state.StateDB
+	tcount                    int // tx count in cycle
+	gp                        *core.GasPool
 	//ownedAccounts             *set.Set
 	txs       types.Transactions // set of transactions
 	lowGasTxs types.Transactions
@@ -121,8 +121,7 @@ type pendingState struct {
 }
 
 func (ps *pendingState) applyTransaction(tx *types.Transaction, bc *core.BlockChain, cc *params.ChainConfig) (error, []*types.Log) {
-	//publicSnaphot, privateSnapshot := ps.publicState.Snapshot(), ps.privateState.Snapshot()
-	publicSnaphot := ps.publicState.Snapshot()
+	publicSnaphot, privateSnapshot := ps.publicState.Snapshot(), ps.privateState.Snapshot()
 
 	//// this is a bit of a hack to force jit for the miners
 	config := vm.Config{} // XXX
@@ -135,7 +134,7 @@ func (ps *pendingState) applyTransaction(tx *types.Transaction, bc *core.BlockCh
 	publicReceipt, _, err := core.ApplyTransaction(cc, bc, author, ps.gp, ps.publicState, ps.header, tx, ps.header.GasUsed, config)
 	if err != nil {
 		ps.publicState.RevertToSnapshot(publicSnaphot)
-		//ps.privateState.RevertToSnapshot(privateSnapshot)
+		ps.privateState.RevertToSnapshot(privateSnapshot)
 
 		return err, nil
 	}

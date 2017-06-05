@@ -92,11 +92,12 @@ type BlockChain struct {
 	currentBlock     *types.Block // Current head of the block chain
 	currentFastBlock *types.Block // Current head of the fast-sync chain (may be above the block chain!)
 
-	stateCache   *state.StateDB // State database to reuse between imports (contains state cache)
-	bodyCache    *lru.Cache     // Cache for the most recent block bodies
-	bodyRLPCache *lru.Cache     // Cache for the most recent block bodies in RLP encoded format
-	blockCache   *lru.Cache     // Cache for the most recent entire blocks
-	futureBlocks *lru.Cache     // future blocks are blocks added for later processing
+	publicStateCache  *state.StateDB // State database to reuse between imports (contains state cache)
+	privateStateCache *state.StateDB // Private state database to reuse between imports (contains state cache)
+	bodyCache         *lru.Cache     // Cache for the most recent block bodies
+	bodyRLPCache      *lru.Cache     // Cache for the most recent block bodies in RLP encoded format
+	blockCache        *lru.Cache     // Cache for the most recent entire blocks
+	futureBlocks      *lru.Cache     // future blocks are blocks added for later processing
 
 	quit    chan struct{} // blockchain quit channel
 	running int32         // running must be called atomically
@@ -219,7 +220,7 @@ func (bc *BlockChain) loadLastState() error {
 	if err != nil {
 		return err
 	}
-	bc.stateCache = statedb
+	bc.publicStateCache = statedb
 
 	// Issue a status log for the user
 	headerTd := bc.GetTd(currentHeader.Hash(), currentHeader.Number.Uint64())
@@ -378,13 +379,22 @@ func (bc *BlockChain) Processor() Processor {
 }
 
 // State returns a new mutable state based on the current HEAD block.
-func (bc *BlockChain) State() (*state.StateDB, error) {
+func (bc *BlockChain) State() (*state.StateDB, *state.StateDB, error) {
 	return bc.StateAt(bc.CurrentBlock().Root())
 }
 
 // StateAt returns a new mutable state based on a particular point in time.
-func (bc *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
-	return bc.stateCache.New(root)
+func (bc *BlockChain) StateAt(root common.Hash) (*state.StateDB, *state.StateDB, error) {
+	publicStateDb, publicStateDbErr := bc.publicStateCache.New(root)
+	if publicStateDbErr != nil {
+		return nil, nil, publicStateDbErr
+	}
+	privateStateDb, privateStateDbErr := bc.privateStateCache.New(GetPrivateStateRoot(bc.chainDb, root))
+	if privateStateDbErr != nil {
+		return nil, nil, privateStateDbErr
+	}
+
+	return publicStateDb, privateStateDb, nil
 }
 
 // Reset purges the entire blockchain, restoring it to its genesis state.
@@ -961,28 +971,28 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 		// error if it fails.
 		switch {
 		case i == 0:
-			err = bc.stateCache.Reset(bc.GetBlock(block.ParentHash(), block.NumberU64()-1).Root())
+			err = bc.publicStateCache.Reset(bc.GetBlock(block.ParentHash(), block.NumberU64()-1).Root())
 		default:
-			err = bc.stateCache.Reset(chain[i-1].Root())
+			err = bc.publicStateCache.Reset(chain[i-1].Root())
 		}
 		if err != nil {
 			bc.reportBlock(block, nil, err)
 			return i, err
 		}
 		// Process block using the parent state as reference point.
-		receipts, logs, usedGas, err := bc.processor.Process(block, bc.stateCache, bc.vmConfig)
+		receipts, logs, usedGas, err := bc.processor.Process(block, bc.publicStateCache, bc.vmConfig)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, err
 		}
 		// Validate the state using the default validator
-		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash(), block.NumberU64()-1), bc.stateCache, receipts, usedGas)
+		err = bc.Validator().ValidateState(block, bc.GetBlock(block.ParentHash(), block.NumberU64()-1), bc.publicStateCache, receipts, usedGas)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, err
 		}
 		// Write state changes to database
-		_, err = bc.stateCache.Commit(bc.config.IsEIP158(block.Number()))
+		_, err = bc.publicStateCache.Commit(bc.config.IsEIP158(block.Number()))
 		if err != nil {
 			return i, err
 		}
@@ -1021,7 +1031,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 				return i, err
 			}
 			// Write hash preimages
-			if err := WritePreimages(bc.chainDb, block.NumberU64(), bc.stateCache.Preimages()); err != nil {
+			if err := WritePreimages(bc.chainDb, block.NumberU64(), bc.publicStateCache.Preimages()); err != nil {
 				return i, err
 			}
 		case SideStatTy:

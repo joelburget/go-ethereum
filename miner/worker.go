@@ -59,12 +59,14 @@ type Work struct {
 	config *params.ChainConfig
 	signer types.Signer
 
-	state     *state.StateDB // apply state changes here
-	ancestors *set.Set       // ancestor set (used for checking uncle parent validity)
-	family    *set.Set       // family set (used for checking uncle invalidity)
-	uncles    *set.Set       // uncle set
-	tcount    int            // tx count in cycle
-	failedTxs types.Transactions
+	// Leave this named state, add privateState which most code paths can just ignore
+	state        *state.StateDB
+	privateState *state.StateDB
+	ancestors    *set.Set // ancestor set (used for checking uncle parent validity)
+	family       *set.Set // family set (used for checking uncle invalidity)
+	uncles       *set.Set // uncle set
+	tcount       int      // tx count in cycle
+	failedTxs    types.Transactions
 
 	Block *types.Block // the new block
 
@@ -341,19 +343,20 @@ func (self *worker) push(work *Work) {
 
 // makeCurrent creates a new environment for the current cycle.
 func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error {
-	state, err := self.chain.StateAt(parent.Root())
+	publicState, privateState, err := self.chain.StateAt(parent.Root())
 	if err != nil {
 		return err
 	}
 	work := &Work{
-		config:    self.config,
-		signer:    types.NewEIP155Signer(self.config.ChainId),
-		state:     state,
-		ancestors: set.New(),
-		family:    set.New(),
-		uncles:    set.New(),
-		header:    header,
-		createdAt: time.Now(),
+		config:       self.config,
+		signer:       types.NewEIP155Signer(self.config.ChainId),
+		state:        publicState,
+		privateState: privateState,
+		ancestors:    set.New(),
+		family:       set.New(),
+		uncles:       set.New(),
+		header:       header,
+		createdAt:    time.Now(),
 	}
 
 	// when 08 is processed ancestors contain 07 (quick block)
