@@ -46,13 +46,13 @@ func (pm *ProtocolManager) loadAppliedIndex() uint64 {
 		lastAppliedIndex = binary.LittleEndian.Uint64(dat)
 	}
 
-	log.Info("Persistent applied index load", lastAppliedIndex)
+	log.Info("Persistent applied index load", "last applied index", lastAppliedIndex)
 	pm.appliedIndex = lastAppliedIndex
 	return lastAppliedIndex
 }
 
 func (pm *ProtocolManager) writeAppliedIndex(index uint64) {
-	log.Info("Persistent applied index write", index)
+	log.Info("Persistent applied index write", "index", index)
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint64(buf, index)
 	pm.quorumRaftDb.Put(appliedDbKey, buf, noFsync)
