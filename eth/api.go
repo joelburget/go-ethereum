@@ -450,12 +450,12 @@ func (api *PrivateDebugAPI) traceBlock(block *types.Block, logConfig *vm.LogConf
 	if err := api.eth.engine.VerifyHeader(blockchain, block.Header(), true); err != nil {
 		return false, structLogger.StructLogs(), err
 	}
-	statedb, _, err := blockchain.StateAt(blockchain.GetBlock(block.ParentHash(), block.NumberU64()-1).Root())
+	statedb, privateStateDb, err := blockchain.StateAt(blockchain.GetBlock(block.ParentHash(), block.NumberU64()-1).Root())
 	if err != nil {
 		return false, structLogger.StructLogs(), err
 	}
 
-	receipts, _, usedGas, err := processor.Process(block, statedb, config)
+	receipts, _, _, usedGas, err := processor.Process(block, statedb, privateStateDb, config)
 	if err != nil {
 		return false, structLogger.StructLogs(), err
 	}
@@ -536,13 +536,13 @@ func (api *PrivateDebugAPI) TraceTransaction(ctx context.Context, txHash common.
 	if tx == nil {
 		return nil, fmt.Errorf("transaction %x not found", txHash)
 	}
-	msg, context, statedb, err := api.computeTxEnv(blockHash, int(txIndex))
+	msg, context, statedb, privateStateDb, err := api.computeTxEnv(blockHash, int(txIndex))
 	if err != nil {
 		return nil, err
 	}
 
 	// Run the transaction with tracing enabled.
-	vmenv := vm.NewEVM(context, statedb, api.config, vm.Config{Debug: true, Tracer: tracer})
+	vmenv := vm.NewEVM(context, statedb, privateStateDb, api.config, vm.Config{Debug: true, Tracer: tracer})
 	ret, gas, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(tx.Gas()))
 	if err != nil {
 		return nil, fmt.Errorf("tracing failed: %v", err)
@@ -562,19 +562,19 @@ func (api *PrivateDebugAPI) TraceTransaction(ctx context.Context, txHash common.
 }
 
 // computeTxEnv returns the execution environment of a certain transaction.
-func (api *PrivateDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.Message, vm.Context, *state.StateDB, error) {
+func (api *PrivateDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (core.Message, vm.Context, *state.StateDB, *state.StateDB, error) {
 	// Create the parent state.
 	block := api.eth.BlockChain().GetBlockByHash(blockHash)
 	if block == nil {
-		return nil, vm.Context{}, nil, fmt.Errorf("block %x not found", blockHash)
+		return nil, vm.Context{}, nil, nil, fmt.Errorf("block %x not found", blockHash)
 	}
 	parent := api.eth.BlockChain().GetBlock(block.ParentHash(), block.NumberU64()-1)
 	if parent == nil {
-		return nil, vm.Context{}, nil, fmt.Errorf("block parent %x not found", block.ParentHash())
+		return nil, vm.Context{}, nil, nil, fmt.Errorf("block parent %x not found", block.ParentHash())
 	}
-	statedb, _, err := api.eth.BlockChain().StateAt(parent.Root())
+	statedb, privateStateDb, err := api.eth.BlockChain().StateAt(parent.Root())
 	if err != nil {
-		return nil, vm.Context{}, nil, err
+		return nil, vm.Context{}, nil, nil, err
 	}
 	txs := block.Transactions()
 
@@ -585,18 +585,18 @@ func (api *PrivateDebugAPI) computeTxEnv(blockHash common.Hash, txIndex int) (co
 		msg, _ := tx.AsMessage(signer)
 		context := core.NewEVMContext(msg, block.Header(), api.eth.BlockChain(), nil)
 		if idx == txIndex {
-			return msg, context, statedb, nil
+			return msg, context, statedb, privateStateDb, nil
 		}
 
-		vmenv := vm.NewEVM(context, statedb, api.config, vm.Config{})
+		vmenv := vm.NewEVM(context, statedb, privateStateDb, api.config, vm.Config{})
 		gp := new(core.GasPool).AddGas(tx.Gas())
 		_, _, err := core.ApplyMessage(vmenv, msg, gp)
 		if err != nil {
-			return nil, vm.Context{}, nil, fmt.Errorf("tx %x failed: %v", tx.Hash(), err)
+			return nil, vm.Context{}, nil, nil, fmt.Errorf("tx %x failed: %v", tx.Hash(), err)
 		}
 		statedb.DeleteSuicides()
 	}
-	return nil, vm.Context{}, nil, fmt.Errorf("tx index %d out of range for block %x", txIndex, blockHash)
+	return nil, vm.Context{}, nil, nil, fmt.Errorf("tx index %d out of range for block %x", txIndex, blockHash)
 }
 
 // Preimage is a debug API function that returns the preimage for a sha3 hash, if known.
@@ -626,7 +626,8 @@ type storageEntry struct {
 
 // StorageRangeAt returns the storage at the given block height and transaction index.
 func (api *PrivateDebugAPI) StorageRangeAt(ctx context.Context, blockHash common.Hash, txIndex int, contractAddress common.Address, keyStart hexutil.Bytes, maxResult int) (StorageRangeResult, error) {
-	_, _, statedb, err := api.computeTxEnv(blockHash, txIndex)
+	// XXX private state?
+	_, _, _, statedb, err := api.computeTxEnv(blockHash, txIndex)
 	if err != nil {
 		return StorageRangeResult{}, err
 	}

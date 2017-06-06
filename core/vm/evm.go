@@ -81,7 +81,8 @@ type EVM struct {
 	// Context provides auxiliary blockchain related information
 	Context
 	// StateDB gives access to the underlying state
-	StateDB StateDB
+	StateDB      StateDB
+	privateState StateDB
 	// Depth is the current call stack
 	depth int
 
@@ -102,13 +103,14 @@ type EVM struct {
 
 // NewEVM retutrns a new EVM evmironment. The returned EVM is not thread safe
 // and should only ever be used *once*.
-func NewEVM(ctx Context, statedb StateDB, chainConfig *params.ChainConfig, vmConfig Config) *EVM {
+func NewEVM(ctx Context, statedb, privateState StateDB, chainConfig *params.ChainConfig, vmConfig Config) *EVM {
 	evm := &EVM{
-		Context:     ctx,
-		StateDB:     statedb,
-		vmConfig:    vmConfig,
-		chainConfig: chainConfig,
-		chainRules:  chainConfig.Rules(ctx.BlockNumber),
+		Context:      ctx,
+		StateDB:      statedb,
+		privateState: privateState,
+		vmConfig:     vmConfig,
+		chainConfig:  chainConfig,
+		chainRules:   chainConfig.Rules(ctx.BlockNumber),
 	}
 
 	evm.interpreter = NewInterpreter(evm, vmConfig)

@@ -131,7 +131,7 @@ func (ps *pendingState) applyTransaction(tx *types.Transaction, bc *core.BlockCh
 	//config.ForceJit = false // disable forcing jit
 
 	var author *common.Address
-	publicReceipt, _, err := core.ApplyTransaction(cc, bc, author, ps.gp, ps.publicState, ps.header, tx, ps.header.GasUsed, config)
+	publicReceipt, _, _, err := core.ApplyTransaction(cc, bc, author, ps.gp, ps.publicState, ps.privateState, ps.header, tx, ps.header.GasUsed, config)
 	if err != nil {
 		ps.publicState.RevertToSnapshot(publicSnaphot)
 		ps.privateState.RevertToSnapshot(privateSnapshot)

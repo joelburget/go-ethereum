@@ -222,6 +222,12 @@ func (bc *BlockChain) loadLastState() error {
 	}
 	bc.publicStateCache = statedb
 
+	// Initialize a statedb cache to ensure singleton account bloom filter generation
+	bc.privateStateCache, err = state.New(GetPrivateStateRoot(bc.chainDb, bc.currentBlock.Hash()), bc.chainDb)
+	if err != nil {
+		return err
+	}
+
 	// Issue a status log for the user
 	headerTd := bc.GetTd(currentHeader.Hash(), currentHeader.Number.Uint64())
 	blockTd := bc.GetTd(bc.currentBlock.Hash(), bc.currentBlock.NumberU64())
@@ -979,8 +985,22 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 			bc.reportBlock(block, nil, err)
 			return i, err
 		}
+		// Create a new private statedb using the parent block and report an
+		// error if it fails.
+		switch {
+		case i == 0:
+			privateRoot := GetPrivateStateRoot(bc.chainDb, bc.GetBlock(block.ParentHash(), block.NumberU64()-1).Root())
+			err = bc.privateStateCache.Reset(privateRoot)
+		default:
+			privateRoot := GetPrivateStateRoot(bc.chainDb, chain[i-1].Root())
+			err = bc.privateStateCache.Reset(privateRoot)
+		}
+		if err != nil {
+			bc.reportBlock(block, nil, err)
+			return i, err
+		}
 		// Process block using the parent state as reference point.
-		receipts, logs, usedGas, err := bc.processor.Process(block, bc.publicStateCache, bc.vmConfig)
+		receipts, privateReceipts, logs, usedGas, err := bc.processor.Process(block, bc.publicStateCache, bc.privateStateCache, bc.vmConfig)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
 			return i, err
@@ -997,10 +1017,20 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 			return i, err
 		}
 
+		// Write private state changes to database
+		privateStateRoot, err := bc.privateStateCache.Commit(true) // Quorum -> EIP 158?
+		if err != nil {
+			return i, err
+		}
+		if err := WritePrivateStateRoot(bc.chainDb, block.Root(), privateStateRoot); err != nil {
+			return i, err
+		}
+
 		// coalesce logs for later processing
 		coalescedLogs = append(coalescedLogs, logs...)
 
-		if err = WriteBlockReceipts(bc.chainDb, block.Hash(), block.NumberU64(), receipts); err != nil {
+		allReceipts := append(receipts, privateReceipts...)
+		if err = WriteBlockReceipts(bc.chainDb, block.Hash(), block.NumberU64(), allReceipts); err != nil {
 			return i, err
 		}
 
@@ -1023,15 +1053,19 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 				return i, err
 			}
 			// store the receipts
-			if err := WriteReceipts(bc.chainDb, receipts); err != nil {
+			if err := WriteReceipts(bc.chainDb, allReceipts); err != nil {
 				return i, err
 			}
 			// Write map map bloom filters
-			if err := WriteMipmapBloom(bc.chainDb, block.NumberU64(), receipts); err != nil {
+			if err := WriteMipmapBloom(bc.chainDb, block.NumberU64(), allReceipts); err != nil {
 				return i, err
 			}
 			// Write hash preimages
 			if err := WritePreimages(bc.chainDb, block.NumberU64(), bc.publicStateCache.Preimages()); err != nil {
+				return i, err
+			}
+			// Write private block bloom
+			if err := WritePrivateBlockBloom(bc.chainDb, block.NumberU64(), privateReceipts); err != nil {
 				return i, err
 			}
 		case SideStatTy:

@@ -101,7 +101,8 @@ func (b *LesApiBackend) GetEVM(ctx context.Context, msg core.Message, state etha
 
 	vmstate := light.NewVMState(ctx, stateDb)
 	context := core.NewEVMContext(msg, header, b.eth.blockchain, nil)
-	return vm.NewEVM(context, vmstate, b.eth.chainConfig, vmCfg), vmstate.Error, nil
+	// XXX private state?
+	return vm.NewEVM(context, vmstate, nil, b.eth.chainConfig, vmCfg), vmstate.Error, nil
 }
 
 func (b *LesApiBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {

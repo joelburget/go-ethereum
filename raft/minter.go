@@ -284,7 +284,7 @@ func (minter *minter) mintNewBlock() {
 	work := minter.createWork()
 	transactions := minter.getTransactions()
 
-	committedTxes, receipts, logs := work.commitTransactions(transactions, minter.chain)
+	committedTxes, publicReceipts, privateReceipts, logs := work.commitTransactions(transactions, minter.chain)
 	txCount := len(committedTxes)
 
 	if txCount == 0 {
@@ -302,8 +302,8 @@ func (minter *minter) mintNewBlock() {
 
 	// NOTE: < QuorumChain creates a signature here and puts it in header.Extra. >
 
-	//allReceipts := append(publicReceipts, privateReceipts...)
-	header.Bloom = types.CreateBloom(receipts)
+	allReceipts := append(publicReceipts, privateReceipts...)
+	header.Bloom = types.CreateBloom(allReceipts)
 
 	// update block hash since it is now available, but was not when the
 	// receipt/log of individual transactions were created:
@@ -312,7 +312,7 @@ func (minter *minter) mintNewBlock() {
 		l.BlockHash = headerHash
 	}
 
-	block := types.NewBlock(header, committedTxes, nil, receipts)
+	block := types.NewBlock(header, committedTxes, nil, publicReceipts)
 
 	log.Info("Generated next block", "block num", block.Number(), "num txes", txCount)
 
@@ -331,12 +331,11 @@ func (minter *minter) mintNewBlock() {
 	log.Info("🔨  Mined block", "number", block.Number(), "hash", block.Hash().Bytes()[:4], "elapsed", elapsed)
 }
 
-func (env *work) commitTransactions(txes *types.TransactionsByPriceAndNonce, bc *core.BlockChain) (types.Transactions, types.Receipts, []*types.Log) {
+func (env *work) commitTransactions(txes *types.TransactionsByPriceAndNonce, bc *core.BlockChain) (types.Transactions, types.Receipts, types.Receipts, []*types.Log) {
 	var logs []*types.Log
 	var committedTxes types.Transactions
-	//var publicReceipts types.Receipts
-	//var privateReceipts types.Receipts
-	var receipts types.Receipts
+	var publicReceipts types.Receipts
+	var privateReceipts types.Receipts
 
 	gp := new(core.GasPool).AddGas(env.header.GasLimit)
 	txCount := 0
@@ -349,7 +348,7 @@ func (env *work) commitTransactions(txes *types.TransactionsByPriceAndNonce, bc 
 
 		env.publicState.Prepare(tx.Hash(), common.Hash{}, 0)
 
-		receipt, err := env.commitTransaction(tx, bc, gp)
+		publicReceipt, privateReceipt, err := env.commitTransaction(tx, bc, gp)
 		switch {
 		case err != nil:
 			log.Info("TX failed, will be removed", "hash", tx.Hash().Bytes()[:4], "err", err)
@@ -358,37 +357,34 @@ func (env *work) commitTransactions(txes *types.TransactionsByPriceAndNonce, bc 
 			txCount++
 			committedTxes = append(committedTxes, tx)
 
-			logs = append(logs, receipt.Logs...)
-			receipts = append(receipts, receipt)
+			logs = append(logs, publicReceipt.Logs...)
+			publicReceipts = append(publicReceipts, publicReceipt)
 
-			//logs = append(logs, publicReceipt.Logs...)
-			//publicReceipts = append(publicReceipts, publicReceipt)
-			//
-			//if privateReceipt != nil {
-			//	logs = append(logs, privateReceipt.Logs...)
-			//	privateReceipts = append(privateReceipts, privateReceipt)
-			//}
+			if privateReceipt != nil {
+				logs = append(logs, privateReceipt.Logs...)
+				privateReceipts = append(privateReceipts, privateReceipt)
+			}
 
 			txes.Shift()
 		}
 	}
 
-	return committedTxes, receipts, logs
+	return committedTxes, publicReceipts, privateReceipts, logs
 }
 
-func (env *work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, gp *core.GasPool) (*types.Receipt, error) {
+func (env *work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, gp *core.GasPool) (*types.Receipt, *types.Receipt, error) {
 	publicSnapshot := env.publicState.Snapshot()
 	privateSnapshot := env.privateState.Snapshot()
 
 	var author *common.Address
 	var vmConf vm.Config
-	receipt, _, err := core.ApplyTransaction(env.config, bc, author, gp, env.publicState, env.header, tx, env.header.GasUsed, vmConf)
+	publicReceipt, privateReceipt, _, err := core.ApplyTransaction(env.config, bc, author, gp, env.publicState, env.privateState, env.header, tx, env.header.GasUsed, vmConf)
 	if err != nil {
 		env.publicState.RevertToSnapshot(publicSnapshot)
 		env.privateState.RevertToSnapshot(privateSnapshot)
 
-		return nil, err
+		return nil, nil, err
 	}
 
-	return receipt, nil
+	return publicReceipt, privateReceipt, nil
 }
