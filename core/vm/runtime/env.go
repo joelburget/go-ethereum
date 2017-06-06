@@ -40,5 +40,6 @@ func NewEnv(cfg *Config, state *state.StateDB) *vm.EVM {
 		GasPrice:    new(big.Int),
 	}
 
-	return vm.NewEVM(context, cfg.State, cfg.ChainConfig, cfg.EVMConfig)
+	// XXX right state?
+	return vm.NewEVM(context, cfg.State, cfg.State, cfg.ChainConfig, cfg.EVMConfig)
 }

@@ -207,5 +207,5 @@ func NewEVMEnvironment(vmTest bool, chainConfig *params.ChainConfig, statedb *st
 	if context.GasPrice == nil {
 		context.GasPrice = new(big.Int)
 	}
-	return vm.NewEVM(context, statedb, chainConfig, vm.Config{NoRecursion: vmTest}), msg
+	return vm.NewEVM(context, statedb, statedb, chainConfig, vm.Config{NoRecursion: vmTest}), msg
 }
