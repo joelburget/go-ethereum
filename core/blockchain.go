@@ -1076,7 +1076,7 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 			events = append(events, ChainSideEvent{block})
 		}
 
-		log.EmitCheckpoint(log.BlockCreated, fmt.Sprintf("%x", block.Hash()))
+		log.EmitCheckpoint(log.BlockCreated, "block", fmt.Sprintf("%x", block.Hash()))
 		stats.processed++
 		stats.usedGas += usedGas.Uint64()
 		stats.report(chain, i)
