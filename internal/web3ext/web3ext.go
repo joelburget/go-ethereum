@@ -30,6 +30,7 @@ var Modules = map[string]string{
 	"shh":        Shh_JS,
 	"swarmfs":    SWARMFS_JS,
 	"txpool":     TxPool_JS,
+	"raft":       Raft_JS,
 }
 
 const Chequebook_JS = `
@@ -684,4 +685,79 @@ web3._extend({
 		})
 	]
 });
+`
+
+const Quorum_JS = `
+web3._extend({
+	property: 'quorum',
+	methods: [
+		new web3._extend.Method({
+			name: 'canonicalHash',
+			call: 'quorum_canonicalHash',
+			params: 1,
+			inputFormatter: [null]
+		}),
+		new web3._extend.Method({
+			name: 'vote',
+			call: 'quorum_vote',
+			params: 1
+		}),
+		new web3._extend.Method({
+			name: 'makeBlock',
+			call: 'quorum_makeBlock'
+		}),
+		new web3._extend.Method({
+			name: 'isVoter',
+			call: 'quorum_isVoter',
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter]
+		}),
+		new web3._extend.Method({
+			name: 'isBlockMaker',
+			call: 'quorum_isBlockMaker',
+			params: 1,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter]
+		}),
+		new web3._extend.Method({
+			name: 'pauseBlockMaker',
+			call: 'quorum_pauseBlockMaker'
+		}),
+		new web3._extend.Method({
+			name: 'resumeBlockMaker',
+			call: 'quorum_resumeBlockMaker'
+		})
+		,
+		new web3._extend.Method({
+			name: 'pauseVoting',
+			call: 'quorum_pauseVoting'
+		}),
+		new web3._extend.Method({
+			name: 'resumeVoting',
+			call: 'quorum_resumeVoting'
+		})
+	],
+	properties:
+	[
+		new web3._extend.Property({
+			name: 'nodeInfo',
+			getter: 'quorum_nodeInfo'
+		}),
+	]
+});
+`
+
+const Raft_JS = `
+web3._extend({
+       property: 'raft',
+       methods:
+       [
+       ],
+       properties:
+       [
+               new web3._extend.Property({
+                       name: 'role',
+                       getter: 'raft_role'
+               })
+       ]
+})
 `

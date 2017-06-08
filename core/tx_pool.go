@@ -684,7 +684,7 @@ func (pool *TxPool) promoteExecutables(state *state.StateDB, accounts []common.A
 		drops, _ := list.Filter(state.GetBalance(addr), gaslimit)
 		for _, tx := range drops {
 			hash := tx.Hash()
-			log.Trace("Removed unpayable queued transaction", "hash", hash)
+			// TODO(joel): don't remove low gas Quorum txes
 			delete(pool.all, hash)
 			pool.priced.Removed()
 			queuedNofundsCounter.Inc(1)
@@ -822,7 +822,7 @@ func (pool *TxPool) demoteUnexecutables(state *state.StateDB) {
 		drops, invalids := list.Filter(state.GetBalance(addr), gaslimit)
 		for _, tx := range drops {
 			hash := tx.Hash()
-			log.Trace("Removed unpayable pending transaction", "hash", hash)
+			// TODO(joel): don't remove low gas Quorum txes
 			delete(pool.all, hash)
 			pool.priced.Removed()
 			pendingNofundsCounter.Inc(1)

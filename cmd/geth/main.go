@@ -29,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/console"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/internal/debug"
@@ -263,13 +264,18 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 		}
 	}()
 
+	//types.IsQuorum = ...
+	log.DoEmitCheckpoints = ctx.GlobalBool(utils.EmitCheckpointsFlag.Name)
+
+	if ctx.GlobalBool(utils.RaftModeFlag.Name) {
+		return
+	}
+
 	// Start auxiliary services for Quorum Chain
 	var ethereum *eth.Ethereum
 	if err := stack.Service(&ethereum); err != nil {
 		utils.Fatalf("ethereum service not running: %v", err)
 	}
-
-	log.DoEmitCheckpoints = ctx.GlobalBool(utils.EmitCheckpointsFlag.Name)
 
 	rpcClient, err := stack.Attach()
 	if err != nil {

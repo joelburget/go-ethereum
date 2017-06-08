@@ -318,7 +318,11 @@ func (bc *BlockChain) GasLimit() *big.Int {
 	bc.mu.RLock()
 	defer bc.mu.RUnlock()
 
-	return bc.currentBlock.GasLimit()
+	if types.IsQuorum {
+		return common.Big0
+	} else {
+		return bc.currentBlock.GasLimit()
+	}
 }
 
 // LastBlockHash return the hash of the HEAD block.
