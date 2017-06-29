@@ -20,10 +20,12 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -102,42 +104,43 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 		return fmt.Errorf("invalid merkle root (remote: %x local: %x)", header.Root, root)
 	}
 
-	// TODO(joel)
-	/*
-		if v.enableQuorumChecks {
-			// Ensure that the parent block was indeed the one that was voted for in the state of this block.
-			// The contract enforces that there are enough votes and only votes from parties that are allowed to vote.
-			var (
-				gp        = new(GasPool).AddGas(common.MaxBig)
-				to        = common.HexToAddress("0x0000000000000000000000000000000000000020")
-				stateCopy = statedb.Copy()
-				msg       = callmsg{
-					from:     stateCopy.GetOrNewStateObject(common.HexToAddress("0x0000000000000000000000000000000000000000")),
-					to:       &to,
-					gas:      big.NewInt(500000),
-					gasPrice: common.Big0,
-					value:    common.Big0,
-					data:     common.Hex2Bytes(fmt.Sprintf("559c390c%064x", block.Number())), // call getCanonHash(uint256)
-				}
-				vmenv = NewEnv(stateCopy, stateCopy, v.config, v.bc, msg, block.Header(), v.config.VmConfig)
-			)
+	// TODO(joel): test that enableQuorumChecks works as intended. Two concerns:
+	// * make sure to use the correct vm config in NewEVM
+	// * the msg nonce will always be 0 since we're using an address (0x0) instead of a state object
+	if v.enableQuorumChecks {
+		// Ensure that the parent block was indeed the one that was voted for in the state of this block.
+		// The contract enforces that there are enough votes and only votes from parties that are allowed to vote.
+		var (
+			gp        = new(GasPool).AddGas(math.MaxBig256)
+			to        = common.HexToAddress("0x0000000000000000000000000000000000000020")
+			stateCopy = statedb.Copy()
+			msg       = callmsg{
+				from:     common.HexToAddress("0x0000000000000000000000000000000000000000"),
+				to:       &to,
+				gas:      big.NewInt(500000),
+				gasPrice: common.Big0,
+				value:    common.Big0,
+				data:     common.Hex2Bytes(fmt.Sprintf("559c390c%064x", block.Number())), // call getCanonHash(uint256)
+			}
+			context = NewEVMContext(msg, header, v.bc, nil)
+			vmenv   = vm.NewEVM(context, stateCopy, stateCopy, v.config, vm.Config{})
+		)
 
-			result, _, _, err := NewStateTransition(vmenv, msg, gp).TransitionDb()
-			if err != nil {
-				return err
-			}
-
-			// result holds the hash that was the winning hash according the voting contract
-			parentHash := common.BytesToHash(result)
-			if parentHash == (common.Hash{}) {
-				// too little votes
-				return fmt.Errorf("block parent could not be verified, ignore block (%d)", block.Number())
-			}
-			if block.ParentHash() != parentHash {
-				return fmt.Errorf("build on top of unexpected parent, expected %s, got %s", parentHash.Hex(), block.ParentHash().Hex())
-			}
+		result, _, _, err := NewStateTransition(vmenv, msg, gp).TransitionDb()
+		if err != nil {
+			return err
 		}
-	*/
+
+		// result holds the hash that was the winning hash according the voting contract
+		parentHash := common.BytesToHash(result)
+		if parentHash == (common.Hash{}) {
+			// too little votes
+			return fmt.Errorf("block parent could not be verified, ignore block (%d)", block.Number())
+		}
+		if block.ParentHash() != parentHash {
+			return fmt.Errorf("build on top of unexpected parent, expected %s, got %s", parentHash.Hex(), block.ParentHash().Hex())
+		}
+	}
 
 	return nil
 }
@@ -174,3 +177,22 @@ func CalcGasLimit(parent *types.Block) *big.Int {
 	}
 	return gl
 }
+
+// callmsg is the message type used for call transactions.
+type callmsg struct {
+	from          common.Address
+	to            *common.Address
+	gas, gasPrice *big.Int
+	value         *big.Int
+	data          []byte
+}
+
+// accessor boilerplate to implement core.Message
+func (m callmsg) From() common.Address { return m.from }
+func (m callmsg) Nonce() uint64        { return 0 }
+func (m callmsg) To() *common.Address  { return m.to }
+func (m callmsg) GasPrice() *big.Int   { return m.gasPrice }
+func (m callmsg) Gas() *big.Int        { return m.gas }
+func (m callmsg) Value() *big.Int      { return m.value }
+func (m callmsg) Data() []byte         { return m.data }
+func (m callmsg) CheckNonce() bool     { return true }
