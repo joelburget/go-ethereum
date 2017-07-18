@@ -97,27 +97,12 @@ func (minter *minter) mintNewBlock(transactions *types.TransactionsByPriceAndNon
 	}
 
 	log.Info("minting", "txes", transactions)
-	//committedTxes, publicReceipts, logs := work.commitTransactions(minter.mux, transactions, minter.chain)
-	work.commitTransactions(minter.mux, transactions, minter.chain)
+	work.commitTransactions(minter.mux, transactions, minter.chain, minter.coinbase)
 
 	minter.eth.TxPool().RemoveBatch(work.failedTxes)
 
-	log.Info("committed")
+	log.Info("committed", "failedTxes", work.failedTxes)
 
-	//// commit state root after all state transitions.
-	//ethash.AccumulateRewards(work.state, header, nil)
-	//header.Root = work.state.IntermediateRoot(minter.chain.Config().IsEIP158(work.header.Number))
-	//
-	//header.Bloom = types.CreateBloom(work.receipts)
-	//
-	//// update block hash since it is now available, but was not when the
-	//// receipt/log of individual transactions were created:
-	//headerHash := header.Hash()
-	//for _, l := range logs {
-	//	l.BlockHash = headerHash
-	//}
-	//
-	//block := types.NewBlock(header, committedTxes, nil, work.receipts)
 	var err error
 	block := work.Block
 	if block, err = minter.engine.Finalize(minter.chain, header, work.state, work.txs, []*types.Header{}, work.receipts); err != nil {
@@ -126,10 +111,6 @@ func (minter *minter) mintNewBlock(transactions *types.TransactionsByPriceAndNon
 	}
 
 	log.Info("Generated next block", "block num", block.Number())
-
-	if _, err := work.state.CommitTo(minter.chainDb, minter.chain.Config().IsEIP158(block.Number())); err != nil {
-		panic(fmt.Sprint("error committing public state: ", err))
-	}
 
 	_, err = minter.chain.InsertChain([]*types.Block{block})
 
@@ -141,7 +122,7 @@ func (minter *minter) mintNewBlock(transactions *types.TransactionsByPriceAndNon
 	log.Info("💎  Minted block", "num", block.Number(), "hash", fmt.Sprintf("%x", block.Hash().Bytes()[:4]), "elapsed", elapsed)
 }
 
-func (env *work) commitTransactions(mux *event.TypeMux, txes *types.TransactionsByPriceAndNonce, bc *core.BlockChain) {
+func (env *work) commitTransactions(mux *event.TypeMux, txes *types.TransactionsByPriceAndNonce, bc *core.BlockChain, coinbase common.Address) {
 	gp := new(core.GasPool).AddGas(env.header.GasLimit)
 
 	var coalescedLogs []*types.Log
@@ -167,11 +148,11 @@ func (env *work) commitTransactions(mux *event.TypeMux, txes *types.Transactions
 		// Start executing the transaction
 		env.state.Prepare(tx.Hash(), common.Hash{}, env.tcount)
 
-		err, logs := env.commitTransaction(tx, bc, gp)
+		err, logs := env.commitTransaction(tx, bc, coinbase, gp)
 		switch err {
 		case core.ErrGasLimitReached:
 			// Pop the current out-of-gas transaction without shifting in the next from the account
-			log.Trace("Gas limit exceeded for current block", "sender", from)
+			log.Info("Gas limit exceeded for current block", "sender", from)
 			txes.Pop()
 
 		case nil:
@@ -182,13 +163,12 @@ func (env *work) commitTransactions(mux *event.TypeMux, txes *types.Transactions
 
 		default:
 			// Pop the current failed transaction without shifting in the next from the account
-			log.Trace("Transaction failed, will be removed", "hash", tx.Hash(), "err", err)
+			log.Info("Transaction failed, will be removed", "hash", tx.Hash(), "err", err)
 			env.failedTxes = append(env.failedTxes, tx)
 			txes.Pop()
 		}
 	}
 
-	//return committedTxes, publicReceipts, logs
 	if len(coalescedLogs) > 0 || env.tcount > 0 {
 		// make a copy, the state caches the logs and these logs get "upgraded" from pending to mined
 		// logs by filling in the block hash when the block was mined by the local miner. This can
@@ -209,11 +189,10 @@ func (env *work) commitTransactions(mux *event.TypeMux, txes *types.Transactions
 	}
 }
 
-func (env *work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, gp *core.GasPool) (error, []*types.Log) {
+func (env *work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, coinbase common.Address, gp *core.GasPool) (error, []*types.Log) {
 	snap := env.state.Snapshot()
 
-	var author *common.Address
-	receipt, _, err := core.ApplyTransaction(env.config, bc, author, gp, env.state, env.header, tx, env.header.GasUsed, vm.Config{})
+	receipt, _, err := core.ApplyTransaction(env.config, bc, &coinbase, gp, env.state, env.header, tx, env.header.GasUsed, vm.Config{})
 	if err != nil {
 		env.state.RevertToSnapshot(snap)
 		return err, nil

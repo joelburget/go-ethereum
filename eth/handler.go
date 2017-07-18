@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -83,10 +84,9 @@ type ProtocolManager struct {
 	txSub    *event.TypeMuxSubscription
 
 	// channels for fetcher, syncer, txsyncLoop
-	newPeerCh   chan *peer
-	txsyncCh    chan *txsync
-	quitSync    chan struct{}
-	noMorePeers chan struct{}
+	newPeerCh chan *peer
+	txsyncCh  chan *txsync
+	quitSync  chan struct{}
 
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
@@ -112,7 +112,6 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 		maxPeers:    maxPeers,
 		peers:       newPeerSet(),
 		newPeerCh:   make(chan *peer),
-		noMorePeers: make(chan struct{}),
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
 		txesInPool:  channels.NewRingChannel(1),
@@ -211,7 +210,7 @@ func (pm *ProtocolManager) signalHaveTxes() {
 	pm.txesInPool.In() <- struct{}{}
 }
 
-func (pm *ProtocolManager) receiveBlockLoop() {
+func (pm *ProtocolManager) receiveHbTxes() {
 	for {
 		txes := ReceiveTxes() // this call blocks until honeybadger gives us txes
 		log.Info("received", "txes", txes)
@@ -241,8 +240,8 @@ func (pm *ProtocolManager) handleTxRequests() {
 	}
 }
 
-func (pm *ProtocolManager) eventLoop(events *event.TypeMuxSubscription) {
-	for range events.Chan() {
+func (pm *ProtocolManager) eventLoop(txPreEvents *event.TypeMuxSubscription) {
+	for range txPreEvents.Chan() {
 		pm.signalHaveTxes()
 	}
 }
@@ -251,10 +250,9 @@ func (pm *ProtocolManager) Start() {
 	// broadcast transactions
 	pm.txSub = pm.eventMux.Subscribe(core.TxPreEvent{})
 
-	go pm.receiveBlockLoop()
+	go pm.receiveHbTxes()
 	go pm.handleTxRequests()
 
-	//events := pm.eventMux.Subscribe(core.TxPreEvent{})
 	go pm.eventLoop(pm.txSub)
 }
 
@@ -262,10 +260,6 @@ func (pm *ProtocolManager) Stop() {
 	log.Info("Stopping Ethereum protocol")
 
 	pm.txSub.Unsubscribe() // quits txBroadcastLoop
-
-	// Quit the sync loop.
-	// After this send has completed, no new peers will be accepted.
-	pm.noMorePeers <- struct{}{}
 
 	// Quit fetcher, txsyncLoop.
 	close(pm.quitSync)
@@ -278,6 +272,8 @@ func (pm *ProtocolManager) Stop() {
 
 	// Wait for all peer handler goroutines and the loops to come down.
 	pm.wg.Wait()
+
+	os.Remove("/tmp/gethsock")
 
 	log.Info("Ethereum protocol stopped")
 }
