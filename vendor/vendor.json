@@ -81,6 +81,12 @@
 			"revisionTime": "2017-04-22T21:51:12Z"
 		},
 		{
+			"checksumSHA1": "/woEHgiVTTD0eIsAqYYy8Glxn7g=",
+			"path": "github.com/eapache/channels",
+			"revision": "47238d5aae8c0fefd518ef2bee46290909cf8263",
+			"revisionTime": "2015-11-23T02:55:56Z"
+		},
+		{
 			"checksumSHA1": "zYnPsNAVm1/ViwCkN++dX2JQhBo=",
 			"path": "github.com/edsrzf/mmap-go",
 			"revision": "935e0e8a636ca4ba70b713f3e38a19e1b77739e8",
