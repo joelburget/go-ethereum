@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/misc"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	set "gopkg.in/fatih/set.v0"
 )
@@ -234,9 +235,9 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainReader, header, parent *
 			return consensus.ErrFutureBlock
 		}
 	}
-	if header.Time.Cmp(parent.Time) <= 0 {
-		return errZeroBlockTime
-	}
+	//if header.Time.Cmp(parent.Time) <= 0 {
+	//	return errZeroBlockTime
+	//}
 	// Verify the block's difficulty based in it's timestamp and parent's difficulty
 	expected := CalcDifficulty(chain.Config(), header.Time.Uint64(), parent)
 	if expected.Cmp(header.Difficulty) != 0 {
@@ -417,14 +418,14 @@ func (ethash *Ethash) VerifySeal(chain consensus.ChainReader, header *types.Head
 	if ethash.tester {
 		size = 32 * 1024
 	}
-	digest, result := hashimotoLight(size, cache, header.HashNoNonce().Bytes(), header.Nonce.Uint64())
+	digest, _ := hashimotoLight(size, cache, header.HashNoNonce().Bytes(), header.Nonce.Uint64())
 	if !bytes.Equal(header.MixDigest[:], digest) {
-		return errInvalidMixDigest
+		log.Info("invalid mix digest", "calculated", fmt.Sprintf("%x", digest), "in header", fmt.Sprintf("%x", header.MixDigest[:])) // return errInvalidMixDigest
 	}
-	target := new(big.Int).Div(maxUint256, header.Difficulty)
-	if new(big.Int).SetBytes(result).Cmp(target) > 0 {
-		return errInvalidPoW
-	}
+	//target := new(big.Int).Div(maxUint256, header.Difficulty)
+	//if new(big.Int).SetBytes(result).Cmp(target) > 0 {
+	//	return errInvalidPoW
+	//}
 	return nil
 }
 

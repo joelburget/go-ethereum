@@ -26,6 +26,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/eapache/channels"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/misc"
@@ -36,6 +37,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/miner"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/discover"
 	"github.com/ethereum/go-ethereum/params"
@@ -77,9 +79,8 @@ type ProtocolManager struct {
 
 	SubProtocols []p2p.Protocol
 
-	eventMux      *event.TypeMux
-	txSub         *event.TypeMuxSubscription
-	minedBlockSub *event.TypeMuxSubscription
+	eventMux *event.TypeMux
+	txSub    *event.TypeMuxSubscription
 
 	// channels for fetcher, syncer, txsyncLoop
 	newPeerCh   chan *peer
@@ -90,11 +91,16 @@ type ProtocolManager struct {
 	// wait group is used for graceful shutdowns during downloading
 	// and processing
 	wg sync.WaitGroup
+
+	txesInPool *channels.RingChannel
+	minter     *minter
 }
 
 // NewProtocolManager returns a new ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
 // with the ethereum network.
-func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkId uint64, maxPeers int, mux *event.TypeMux, txpool txPool, engine consensus.Engine, blockchain *core.BlockChain, chaindb ethdb.Database) (*ProtocolManager, error) {
+func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, networkId uint64, maxPeers int, mux *event.TypeMux, txpool txPool, engine consensus.Engine, eth miner.Backend) (*ProtocolManager, error) {
+	blockchain := eth.BlockChain()
+	chaindb := eth.ChainDb()
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkId:   networkId,
@@ -109,9 +115,11 @@ func NewProtocolManager(config *params.ChainConfig, mode downloader.SyncMode, ne
 		noMorePeers: make(chan struct{}),
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
+		txesInPool:  channels.NewRingChannel(1),
+		minter:      newMinter(config, engine, mux, eth),
 	}
 	// Figure out whether to allow fast sync or not
-	if mode == downloader.FastSync && blockchain.CurrentBlock().NumberU64() > 0 {
+	if mode == downloader.FastSync && eth.BlockChain().CurrentBlock().NumberU64() > 0 {
 		log.Warn("Blockchain not empty, fast sync disabled")
 		mode = downloader.FullSync
 	}
@@ -198,24 +206,62 @@ func (pm *ProtocolManager) removePeer(id string) {
 	}
 }
 
+func (pm *ProtocolManager) signalHaveTxes() {
+	log.Info("signalHaveTxes")
+	pm.txesInPool.In() <- struct{}{}
+}
+
+func (pm *ProtocolManager) receiveBlockLoop() {
+	for {
+		txes := ReceiveTxes() // this call blocks until honeybadger gives us txes
+		log.Info("received", "txes", txes)
+		pm.minter.mintNewBlock(types.TransactionsByPriceAndNonceFromArray(txes))
+	}
+}
+
+func (pm *ProtocolManager) handleTxRequests() {
+	for range pm.txesInPool.Out() {
+		pending, err := pm.txpool.Pending()
+		log.Info("get pending", "pending", pending)
+		if err != nil {
+			panic(fmt.Sprintf("handleTxRequests error: %v", err))
+		}
+
+		txes := types.NewTransactionsByPriceAndNonce(pending)
+		var flat = make([]*types.Transaction, 0, len(pending))
+		for {
+			tx := txes.Peek()
+			if tx == nil {
+				break
+			}
+			flat = append(flat, tx)
+			txes.Shift()
+		}
+		SendTxes(flat)
+	}
+}
+
+func (pm *ProtocolManager) eventLoop(events *event.TypeMuxSubscription) {
+	for range events.Chan() {
+		pm.signalHaveTxes()
+	}
+}
+
 func (pm *ProtocolManager) Start() {
 	// broadcast transactions
 	pm.txSub = pm.eventMux.Subscribe(core.TxPreEvent{})
-	go pm.txBroadcastLoop()
-	// broadcast mined blocks
-	pm.minedBlockSub = pm.eventMux.Subscribe(core.NewMinedBlockEvent{})
-	go pm.minedBroadcastLoop()
 
-	// start sync handlers
-	go pm.syncer()
-	go pm.txsyncLoop()
+	go pm.receiveBlockLoop()
+	go pm.handleTxRequests()
+
+	//events := pm.eventMux.Subscribe(core.TxPreEvent{})
+	go pm.eventLoop(pm.txSub)
 }
 
 func (pm *ProtocolManager) Stop() {
 	log.Info("Stopping Ethereum protocol")
 
-	pm.txSub.Unsubscribe()         // quits txBroadcastLoop
-	pm.minedBlockSub.Unsubscribe() // quits blockBroadcastLoop
+	pm.txSub.Unsubscribe() // quits txBroadcastLoop
 
 	// Quit the sync loop.
 	// After this send has completed, no new peers will be accepted.
@@ -708,26 +754,6 @@ func (pm *ProtocolManager) BroadcastTx(hash common.Hash, tx *types.Transaction) 
 		peer.SendTransactions(types.Transactions{tx})
 	}
 	log.Trace("Broadcast transaction", "hash", hash, "recipients", len(peers))
-}
-
-// Mined broadcast loop
-func (self *ProtocolManager) minedBroadcastLoop() {
-	// automatically stops if unsubscribe
-	for obj := range self.minedBlockSub.Chan() {
-		switch ev := obj.Data.(type) {
-		case core.NewMinedBlockEvent:
-			self.BroadcastBlock(ev.Block, true)  // First propagate block to peers
-			self.BroadcastBlock(ev.Block, false) // Only then announce to the rest
-		}
-	}
-}
-
-func (self *ProtocolManager) txBroadcastLoop() {
-	// automatically stops if unsubscribe
-	for obj := range self.txSub.Chan() {
-		event := obj.Data.(core.TxPreEvent)
-		self.BroadcastTx(event.Tx.Hash(), event.Tx)
-	}
 }
 
 // EthNodeInfo represents a short summary of the Ethereum sub-protocol metadata known

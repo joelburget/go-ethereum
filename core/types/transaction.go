@@ -406,6 +406,19 @@ func NewTransactionsByPriceAndNonce(txs map[common.Address]Transactions) *Transa
 	}
 }
 
+func TransactionsByPriceAndNonceFromArray(txes Transactions) *TransactionsByPriceAndNonce {
+	m := make(map[common.Address]Transactions)
+	for _, tx := range txes {
+		signer := HomesteadSigner{} // XXX
+		from, _ := Sender(signer, tx)
+		if _, ok := m[from]; !ok {
+			m[from] = make(Transactions, 0)
+		}
+		m[from] = append(m[from], tx)
+	}
+	return NewTransactionsByPriceAndNonce(m)
+}
+
 // Peek returns the next transaction by price.
 func (t *TransactionsByPriceAndNonce) Peek() *Transaction {
 	if len(t.heads) == 0 {
