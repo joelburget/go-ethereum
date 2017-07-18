@@ -9,13 +9,14 @@ import (
 	"os"
 )
 
-func FromEnvironmentOrNil(name string) (net.Conn, net.Conn) {
-	socketPath := os.Getenv(name)
-	if socketPath == "" {
+func FromEnvironmentOrNil(badgerSock string, gethSock string) (net.Conn, net.Conn) {
+	badgerSockPath := os.Getenv(badgerSock)
+	gethSockPath := os.Getenv(gethSock)
+	if badgerSockPath == "" || gethSockPath == "" {
 		return nil, nil
 	}
 
-	myAddr, err := net.ResolveUnixAddr("unixgram", "/tmp/gethsock")
+	myAddr, err := net.ResolveUnixAddr("unixgram", gethSockPath)
 	if err != nil {
 		panic(fmt.Sprintf("MustNew error: %v", err))
 	}
@@ -25,7 +26,7 @@ func FromEnvironmentOrNil(name string) (net.Conn, net.Conn) {
 		panic(fmt.Sprintf("MustNew error: %v", err))
 	}
 
-	sender, err := net.Dial("unixgram", socketPath)
+	sender, err := net.Dial("unixgram", badgerSockPath)
 	if err != nil {
 		panic(fmt.Sprintf("MustNew error: %v", err))
 	}
@@ -33,7 +34,7 @@ func FromEnvironmentOrNil(name string) (net.Conn, net.Conn) {
 	return sender, listener
 }
 
-var Sender, Listener = FromEnvironmentOrNil("SOCKET_PATH")
+var Sender, Listener = FromEnvironmentOrNil("BADGER_SOCK", "GETH_SOCK")
 
 func SendTxes(txes []*types.Transaction) {
 	log.Info("sending txes", "txes", txes)
