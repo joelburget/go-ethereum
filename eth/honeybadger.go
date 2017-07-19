@@ -21,17 +21,17 @@ func FromEnvironmentOrNil(badgerSock string, gethSock string) (net.Conn, net.Con
 		panic(fmt.Sprintf("MustNew error: %v", err))
 	}
 
-	listener, err := net.ListenUnixgram("unixgram", myAddr)
+	badgerAddr, err := net.ResolveUnixAddr("unixgram", badgerSockPath)
 	if err != nil {
 		panic(fmt.Sprintf("MustNew error: %v", err))
 	}
 
-	sender, err := net.Dial("unixgram", badgerSockPath)
+	sender, err := net.DialUnix("unixgram", myAddr, badgerAddr) // net.DialUnix("unixgram", badgerSockPath)
 	if err != nil {
 		panic(fmt.Sprintf("MustNew error: %v", err))
 	}
 
-	return sender, listener
+	return sender, sender
 }
 
 var Sender, Listener = FromEnvironmentOrNil("BADGER_SOCK", "GETH_SOCK")
