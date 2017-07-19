@@ -26,10 +26,17 @@ func FromEnvironmentOrNil(badgerSock string, gethSock string) (net.Conn, net.Con
 		panic(fmt.Sprintf("MustNew error: %v", err))
 	}
 
-	sender, err := net.DialUnix("unixgram", myAddr, badgerAddr) // net.DialUnix("unixgram", badgerSockPath)
+	sender, err := net.DialUnix("unixgram", myAddr, badgerAddr)
 	if err != nil {
 		panic(fmt.Sprintf("MustNew error: %v", err))
 	}
+
+	// send an empty list to establish a connection with honeybadger
+	encoding, err := rlp.EncodeToBytes(&types.Transactions{})
+	if err != nil {
+		panic(fmt.Sprintf("SendTxes error: %v", err))
+	}
+	sender.Write(encoding)
 
 	return sender, sender
 }
