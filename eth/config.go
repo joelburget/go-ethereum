@@ -117,6 +117,10 @@ type Config struct {
 	PowFake   bool   `toml:"-"`
 	PowTest   bool   `toml:"-"`
 	PowShared bool   `toml:"-"`
+
+	SingleBlockMaker bool // Assume this node is the only node on the network allowed to create blocks
+	VoteMinBlockTime uint
+	VoteMaxBlockTime uint
 }
 
 type configMarshaling struct {

@@ -45,7 +45,7 @@ func TestDualStatePrivateToPublicCall(t *testing.T) {
 
 	author := common.Address{}
 	msg := callmsg{
-		addr:     author,
+		from:     author,
 		to:       &callAddr,
 		value:    big.NewInt(1),
 		gas:      big.NewInt(1000000),
@@ -74,7 +74,7 @@ func TestDualStatePublicToPrivateCall(t *testing.T) {
 
 	author := common.Address{}
 	msg := callmsg{
-		addr:     author,
+		from:     author,
 		to:       &callAddr,
 		value:    big.NewInt(1),
 		gas:      big.NewInt(1000000),
@@ -103,7 +103,7 @@ func TestDualStateReadOnly(t *testing.T) {
 
 	author := common.Address{}
 	msg := callmsg{
-		addr:     author,
+		from:     author,
 		to:       &callAddr,
 		value:    big.NewInt(1),
 		gas:      big.NewInt(1000000),

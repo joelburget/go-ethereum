@@ -487,6 +487,46 @@ var (
 		Value: whisper.DefaultMinimumPoW,
 	}
 
+	// Quorum flags
+	VoteAccountFlag = cli.StringFlag{
+		Name:  "voteaccount",
+		Usage: "Address that is used to vote for blocks",
+		Value: "",
+	}
+	VoteAccountPasswordFlag = cli.StringFlag{
+		Name:  "votepassword",
+		Usage: "Password to unlock the voting address",
+		Value: "",
+	}
+	VoteBlockMakerAccountFlag = cli.StringFlag{
+		Name:  "blockmakeraccount",
+		Usage: "Address that is used to create blocks",
+		Value: "",
+	}
+	VoteBlockMakerAccountPasswordFlag = cli.StringFlag{
+		Name:  "blockmakerpassword",
+		Usage: "Password to unlock the block maker address",
+		Value: "",
+	}
+	VoteMinBlockTimeFlag = cli.IntFlag{
+		Name:  "minblocktime",
+		Usage: "Set minimum block time",
+		Value: 3,
+	}
+	VoteMaxBlockTimeFlag = cli.IntFlag{
+		Name:  "maxblocktime",
+		Usage: "Set max block time",
+		Value: 10,
+	}
+	SingleBlockMakerFlag = cli.BoolFlag{
+		Name:  "singleblockmaker",
+		Usage: "Indicate this node is the only node that can create blocks",
+	}
+	EnableNodePermissionFlag = cli.BoolFlag{
+		Name:  "permissioned",
+		Usage: "If enabled, the node will allow only a defined list of nodes to connect",
+	}
+
 	// Raft flags
 	RaftModeFlag = cli.BoolFlag{
 		Name:  "raft",
@@ -505,12 +545,6 @@ var (
 	EmitCheckpointsFlag = cli.BoolFlag{
 		Name:  "emitcheckpoints",
 		Usage: "If enabled, emit specially formatted logging checkpoints",
-	}
-
-	// Quorum
-	EnableNodePermissionFlag = cli.BoolFlag{
-		Name:  "permissioned",
-		Usage: "If enabled, the node will allow only a defined list of nodes to connect",
 	}
 )
 

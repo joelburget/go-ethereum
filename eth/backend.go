@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/clique"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/quorum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/eth/downloader"
@@ -82,6 +83,11 @@ type Ethereum struct {
 	netRPCService *ethapi.PublicNetAPI
 
 	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
+
+	blockVoting      *quorum.QuorumBlockVoting
+	voteMinBlockTime uint
+	voteMaxBlockTime uint
+	blockMakerStrat  quorum.BlockMakerStrategy
 }
 
 // HACK(joel) this was added just to make the eth chain config visible to RegisterRaftService
@@ -176,6 +182,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	eth.miner.SetExtra(makeExtraData(config.ExtraData, eth.chainConfig.IsQuorum))
 
 	eth.ApiBackend = &EthApiBackend{eth, nil}
+
+	eth.blockVoting = quorum.NewQuorumBlockVoting(eth.blockchain, eth.chainConfig, eth.txPool, eth.eventMux, eth.chainDb, eth.accountManager, config.SingleBlockMaker)
 
 	return eth, nil
 }
@@ -287,6 +295,11 @@ func (s *Ethereum) APIs() []rpc.API {
 			Version:   "1.0",
 			Service:   s.netRPCService,
 			Public:    true,
+		},
+		{
+			Namespace: "quorum",
+			Version:   "1.0",
+			Service:   quorum.NewPublicQuorumAPI(s.blockVoting),
 		},
 	}...)
 }

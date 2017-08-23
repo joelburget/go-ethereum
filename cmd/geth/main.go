@@ -113,6 +113,14 @@ var (
 		utils.GpoPercentileFlag,
 		utils.ExtraDataFlag,
 		configFileFlag,
+		utils.VoteAccountFlag,
+		utils.VoteAccountPasswordFlag,
+		utils.VoteBlockMakerAccountFlag,
+		utils.VoteBlockMakerAccountPasswordFlag,
+		utils.VoteMinBlockTimeFlag,
+		utils.VoteMaxBlockTimeFlag,
+		utils.SingleBlockMakerFlag,
+		utils.EnableNodePermissionFlag,
 		utils.RaftModeFlag,
 		utils.RaftBlockTimeFlag,
 		utils.RaftJoinExistingFlag,
@@ -295,5 +303,51 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 		if err := ethereum.StartMining(true); err != nil {
 			utils.Fatalf("Failed to start mining: %v", err)
 		}
+	}
+
+	// From here to the bottom is Quorum-specific stuff
+	log.DoEmitCheckpoints = ctx.GlobalBool(utils.EmitCheckpointsFlag.Name)
+
+	if ctx.GlobalBool(utils.RaftModeFlag.Name) {
+		return
+	}
+
+	// Start auxiliary services for Quorum Chain
+	var ethereum *eth.Ethereum
+	if err := stack.Service(&ethereum); err != nil {
+		utils.Fatalf("ethereum service not running: %v", err)
+	}
+
+	rpcClient, err := stack.Attach()
+	if err != nil {
+		utils.Fatalf("Failed to attach to self: %v", err)
+	}
+
+	var voteAcct accounts.Account
+	var makerAcct accounts.Account
+
+	if voteAddr := ctx.GlobalString(utils.VoteAccountFlag.Name); voteAddr != "" {
+		voteAddr = strings.TrimSpace(voteAddr)
+		var passwd []string
+		if ctx.GlobalIsSet(utils.VoteAccountPasswordFlag.Name) {
+			passwd = append(passwd, ctx.GlobalString(utils.VoteAccountPasswordFlag.Name))
+		}
+
+		voteAcct, _ = unlockAccount(ctx, ks, voteAddr, 0, passwd)
+		// unlockAccount fatals in case the account could not be unlocked
+	}
+
+	if makerAddr := ctx.GlobalString(utils.VoteBlockMakerAccountFlag.Name); makerAddr != "" {
+		makerAddr = strings.TrimSpace(makerAddr)
+		var passwd []string
+		if ctx.GlobalIsSet(utils.VoteBlockMakerAccountPasswordFlag.Name) {
+			passwd = append(passwd, ctx.GlobalString(utils.VoteBlockMakerAccountPasswordFlag.Name))
+		}
+		makerAcct, _ = unlockAccount(ctx, ks, makerAddr, 0, passwd)
+		// unlockAccount fatals in case the account could not be unlocked
+	}
+
+	if err := ethereum.StartBlockVoting(rpcClient, ks, voteAcct, makerAcct); err != nil {
+		utils.Fatalf("Failed to start block voting: %v", err)
 	}
 }

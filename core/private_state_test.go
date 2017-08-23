@@ -18,26 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/private/constellation"
 )
 
-// callmsg is the message type used for call transactions in the private state test
-type callmsg struct {
-	addr          common.Address
-	to            *common.Address
-	gas, gasPrice *big.Int
-	value         *big.Int
-	data          []byte
-}
-
-// accessor boilerplate to implement core.Message
-func (m callmsg) From() common.Address         { return m.addr }
-func (m callmsg) FromFrontier() common.Address { return m.addr }
-func (m callmsg) Nonce() uint64                { return 0 }
-func (m callmsg) To() *common.Address          { return m.to }
-func (m callmsg) GasPrice() *big.Int           { return m.gasPrice }
-func (m callmsg) Gas() *big.Int                { return m.gas }
-func (m callmsg) Value() *big.Int              { return m.value }
-func (m callmsg) Data() []byte                 { return m.data }
-func (m callmsg) CheckNonce() bool             { return true }
-
 func ExampleMakeCallHelper() {
 	var (
 		// setup new pair of keys for the calls

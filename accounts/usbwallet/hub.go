@@ -206,7 +206,7 @@ func (hub *Hub) Subscribe(sink chan<- accounts.WalletEvent) event.Subscription {
 	// Subscribers require an active notification loop, start it
 	if !hub.updating {
 		hub.updating = true
-		go hub.updater()
+		//go hub.updater()
 	}
 	return sub
 }
